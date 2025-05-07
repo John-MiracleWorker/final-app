@@ -3,7 +3,7 @@ import { z } from "zod";
 import OpenAI from "openai";
 import protocolsData from "@/lib/protocols.json";
 
-// 1) Validate request
+// 1) Validate incoming request
 const requestSchema = z.object({
   categories: z.array(z.string()).optional(),
   length: z.number().min(1).max(20),
@@ -37,12 +37,12 @@ export async function POST(request: Request) {
   }
   const { categories = [], length } = parseResult.data;
 
-  // prepare protocols list
+  // build protocol list
   const allProtocols: Protocol[] = Object.entries(
-    protocolsData as Record<string, Omit<Protocol, 'id'>>
+    protocolsData as Record<string, Omit<Protocol, "id">>
   ).map(([id, proto]) => ({ id, ...proto }));
 
-  // filter by categories if provided
+  // filter by category
   let pool = allProtocols;
   if (categories.length) {
     pool = pool.filter(p => p.categories?.some(c => categories.includes(c)));
@@ -54,11 +54,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // shuffle & select desired count
+  // shuffle & select
   pool.sort(() => Math.random() - 0.5);
   const selected = pool.slice(0, length);
 
-  // init OpenAI
+  // prepare OpenAI client
   const apiKey = process.env.OPENAI_API_KEY;
   const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
@@ -69,21 +69,25 @@ export async function POST(request: Request) {
 
     if (openai) {
       try {
-        const sys = `You are an EMS educator. Generate ONE multiple-choice question (4 options) testing knowledge of the protocol titled \"${proto.title}\". Respond with ONLY valid JSON matching this schema: {  
-  \"id\": string,  
-  \"questionText\": string,  
-  \"questionType\": \"multiple-choice\",  
-  \"options\": [{ \"id\": string, \"text\": string }],  
-  \"correctAnswerId\": string,  
-  \"explanation\": string  
+        const systemPrompt = `
+You are an EMS educator. Generate ONE multiple-choice question (exactly four options) testing knowledge of the protocol titled "${proto.title}".
+Respond with ONLY valid JSON matching this schema:
+{
+  "id": string,
+  "questionText": string,
+  "questionType": "multiple-choice",
+  "options": [{ "id": string, "text": string }],
+  "correctAnswerId": string,
+  "explanation": string
 }`;
-        const usr = `Protocol Content:\n${proto.content}`;
+        const userPrompt = `Protocol Content:
+${proto.content}`;
 
         const resp = await openai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [
-            { role: "system", content: sys },
-            { role: "user", content: usr }
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
           ],
           temperature: 0.7,
         });
@@ -93,11 +97,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // fallback stub
+    // fallback stub if AI fails
     if (!question) {
       question = {
         id: `fallback-${proto.id}-${Date.now()}`,
-        questionText: `According to protocol \"${proto.title}\", what is the first step?`,
+        questionText: `According to protocol "${proto.title}", what is the first step?`,
         questionType: "multiple-choice",
         options: [
           { id: "1", text: "Step A" },
@@ -106,7 +110,7 @@ export async function POST(request: Request) {
           { id: "4", text: "Step D" }
         ],
         correctAnswerId: "1",
-        explanation: "Fallback: review the protocol for correct first step.",
+        explanation: "Fallback: review the protocol for the correct first step.",
       };
     }
 
