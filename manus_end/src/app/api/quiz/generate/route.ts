@@ -2,12 +2,10 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, XCircle } from 'lucide-react';
 
-// Mocked categories
+// Mock categories
 const MOCK_CATEGORIES = [
   { id: 'adult', name: 'Adult' },
   { id: 'pediatric', name: 'Pediatric' },
@@ -42,73 +40,49 @@ export default function QuizPage() {
   const [error, setError] = useState<string | null>(null);
 
   const toggleCategory = (id: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
-    );
+    setSelectedCategories(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   };
 
   const startQuiz = async () => {
-    if (selectedCategories.length === 0) {
-      setError('Please select at least one category');
-      return;
-    }
+    if (selectedCategories.length === 0) { setError('Please select at least one category'); return; }
     setError(null);
     setIsLoading(true);
     try {
       const res = await fetch('/api/quiz/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ categories: selectedCategories, length: questionCount }),
       });
       const data = await res.json();
-      if (data.questions) {
-        setQuestions(data.questions);
-        setQuizState('in-progress');
-      } else {
-        setError('Failed to load questions');
-      }
-    } catch {
-      setError('Error generating quiz');
-    } finally {
-      setIsLoading(false);
-    }
+      if (data.questions) { setQuestions(data.questions); setQuizState('in-progress'); }
+      else { setError('Failed to load questions'); }
+    } catch { setError('Error generating quiz'); }
+    setIsLoading(false);
   };
 
   const submitAnswer = () => {
     const q = questions[currentIndex];
     const isCorrect = selectedOption === q.correctAnswerId;
-    setUserAnswers(prev => [
-      ...prev,
-      { questionId: q.id, selectedAnswerId: selectedOption, isCorrect }
-    ]);
+    setUserAnswers(prev => [...prev, { questionId: q.id, selectedAnswerId: selectedOption, isCorrect }]);
     setShowFeedback(true);
   };
 
   const nextStep = () => {
     setShowFeedback(false);
     setSelectedOption('');
-    if (currentIndex + 1 < questions.length) {
-      setCurrentIndex(i => i + 1);
-    } else {
-      setQuizState('completed');
-    }
+    if (currentIndex + 1 < questions.length) { setCurrentIndex(i => i + 1); }
+    else { setQuizState('completed'); }
   };
 
-  const reset = () => {
-    setQuizState('setup');
-    setSelectedCategories([]);
-    setQuestionCount(5);
-    setQuestions([]);
-    setCurrentIndex(0);
-    setUserAnswers([]);
-    setSelectedOption('');
-    setShowFeedback(false);
-    setError(null);
+  const resetQuiz = () => {
+    setQuizState('setup'); setSelectedCategories([]); setQuestionCount(5);
+    setQuestions([]); setCurrentIndex(0); setUserAnswers([]);
+    setSelectedOption(''); setShowFeedback(false); setError(null);
   };
 
-  // Setup Screen
+  let screen: React.ReactNode;
+
   if (quizState === 'setup') {
-    return (
+    screen = (
       <div className="p-6 max-w-md mx-auto text-white">
         <h1 className="text-2xl font-bold mb-4">Setup Quiz</h1>
         {error && <p className="mb-2 text-red-400">{error}</p>}
@@ -116,43 +90,24 @@ export default function QuizPage() {
           <p className="mb-2">Select Categories:</p>
           {MOCK_CATEGORIES.map(c => (
             <label key={c.id} className="flex items-center mb-1">
-              <input
-                type="checkbox"
-                checked={selectedCategories.includes(c.id)}
-                onChange={() => toggleCategory(c.id)}
-                className="mr-2"
-              />
+              <input type="checkbox" checked={selectedCategories.includes(c.id)} onChange={() => toggleCategory(c.id)} className="mr-2" />
               <span>{c.name}</span>
             </label>
           ))}
         </div>
         <div className="mb-4">
           <label className="block mb-1">Number of Questions:</label>
-          <input
-            type="number"
-            min={1}
-            max={20}
-            value={questionCount}
-            onChange={e => setQuestionCount(Number(e.target.value))}
-            className="w-full p-2 rounded border"
-          />
+          <input type="number" min={1} max={20} value={questionCount} onChange={e => setQuestionCount(Number(e.target.value))} className="w-full p-2 rounded border" />
         </div>
-        <Button onClick={startQuiz} disabled={isLoading} className="w-full">
-          {isLoading ? 'Loading...' : 'Start Quiz'}
-        </Button>
+        <Button onClick={startQuiz} disabled={isLoading} className="w-full">{isLoading ? 'Loading...' : 'Start Quiz'}</Button>
       </div>
     );
-  }
-
-  // In-Progress Screen
-  if (quizState === 'in-progress') {
+  } else if (quizState === 'in-progress') {
     const q = questions[currentIndex];
-    return (
+    screen = (
       <div className="p-6 max-w-md mx-auto text-white">
         <div className="flex justify-between mb-4">
-          <h2 className="font-semibold">
-            Question {currentIndex + 1} / {questions.length}
-          </h2>
+          <h2 className="font-semibold">Question {currentIndex + 1} / {questions.length}</h2>
           <Progress value={((currentIndex + 1) / questions.length) * 100} />
         </div>
         <p className="mb-4">{q.questionText}</p>
@@ -165,31 +120,26 @@ export default function QuizPage() {
           ))}
         </RadioGroup>
         {showFeedback ? (
-          <>
+          <> 
             <p className="mb-2">{q.explanation}</p>
-            <Button onClick={nextStep} className="w-full">
-              {currentIndex + 1 < questions.length ? 'Next' : 'Finish'}
-            </Button>
+            <Button onClick={nextStep} className="w-full">{currentIndex + 1 < questions.length ? 'Next' : 'Finish'}</Button>
           </>
         ) : (
-          <Button onClick={submitAnswer} disabled={!selectedOption} className="w-full">
-            Submit
-          </Button>
+          <Button onClick={submitAnswer} disabled={!selectedOption} className="w-full">Submit</Button>
         )}
+      </div>
+    );
+  } else {
+    // completed
+    const correctCount = userAnswers.filter(a => a.isCorrect).length;
+    screen = (
+      <div className="p-6 max-w-md mx-auto text-white">
+        <h1 className="text-2xl font-bold mb-4">Quiz Complete!</h1>
+        <p className="mb-4">Score: {correctCount} / {questions.length}</p>
+        <Button onClick={resetQuiz} className="w-full">Restart</Button>
       </div>
     );
   }
 
-  // Completion Screen
-  return (
-    <div className="p-6 max-w-md mx-auto text-white">
-      <h1 className="text-2xl font-bold mb-4">Quiz Complete!</h1>
-      <p className="mb-4">
-        Score: {userAnswers.filter(a => a.isCorrect).length} / {questions.length}
-      </p>
-      <Button onClick={reset} className="w-full">
-        Restart
-      </Button>
-    </div>
-  );
+  return <>{screen}</>;
 }
