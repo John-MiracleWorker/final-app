@@ -2,13 +2,12 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 
-// Mocked protocol categories for now - will be dynamic later
+// Mocked protocol categories - replace with dynamic later
 const MOCK_CATEGORIES = [
   { id: "adult", name: "Adult" },
   { id: "pediatric", name: "Pediatric" },
@@ -43,6 +42,12 @@ export default function QuizPage() {
   const [score, setScore] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleCategory = (catId: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(catId) ? prev.filter(id => id !== catId) : [...prev, catId]
+    );
+  };
 
   const startQuiz = async () => {
     if (selectedCategories.length === 0) {
@@ -110,8 +115,36 @@ export default function QuizPage() {
       <div className="p-6 max-w-xl mx-auto space-y-4 text-white">
         <h1 className="text-3xl font-bold">Setup Your Quiz</h1>
         {error && <p className="text-red-400">{error}</p>}
-        {/* Add category & length selectors here */}
-        <Button onClick={startQuiz} disabled={isLoading} className="w-full">
+        <div>
+          <p className="text-sm font-medium">Select Categories:</p>
+          <div className="mt-2 space-y-2">
+            {MOCK_CATEGORIES.map(c => (
+              <Label key={c.id} htmlFor={c.id} className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={c.id}
+                  checked={selectedCategories.includes(c.id)}
+                  onChange={() => toggleCategory(c.id)}
+                  className="mr-2"
+                />
+                {c.name}
+              </Label>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="length" className="block text-sm font-medium">Number of questions:</Label>
+          <input
+            type="number"
+            id="length"
+            value={selectedLength}
+            onChange={e => setSelectedLength(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+            min={1}
+            max={20}
+            className="mt-1 block w-full border border-gray-300 rounded-md p-2 text-black"
+          />
+        </div>
+        <Button onClick={startQuiz} disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
           {isLoading ? 'Loading...' : 'Start Quiz'}
         </Button>
       </div>
@@ -168,50 +201,4 @@ export default function QuizPage() {
           </div>
         )}
         {!showFeedback ? (
-          <Button onClick={handleAnswerSubmit} disabled={!selectedOption} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-            Submit
-          </Button>
-        ) : (
-          <Button onClick={handleNextQuestion} className="w-full bg-green-600 hover:bg-green-700 text-white">
-            {currentQuestionIndex + 1 < questions.length ? 'Next Question' : 'Finish Quiz'}
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  // COMPLETION SCREEN
-  return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto text-white">
-      <h1 className="text-3xl font-bold text-center">Quiz Completed!</h1>
-      <div className="p-6 bg-gray-700 rounded-lg shadow text-center">
-        <p className="text-xl">Your Score:</p>
-        <p className="text-4xl font-bold">{score} / {questions.length}</p>
-        <p className="text-2xl">({((score / questions.length) * 100).toFixed(0)}%)</p>
-      </div>
-      <h3 className="text-xl font-semibold mt-6 mb-3">Review Your Answers:</h3>
-      <div className="space-y-4">
-        {questions.map(q => {
-          const ua = userAnswers.find(ua => ua.questionId === q.id);
-          const selectedOptText = q.options.find(opt => opt.id === ua?.selectedAnswerId)?.text;
-          const correctOptText = q.options.find(opt => opt.id === q.correctAnswerId)?.text;
-          return (
-            <div key={q.id} className="p-4 border rounded-md bg-gray-800 shadow-sm">
-              <p className="text-md font-semibold">{q.questionText}</p>
-              <p className={`text-sm ${ua?.isCorrect ? 'text-green-200' : 'text-red-200'}`}>
-                Your answer: {selectedOptText || 'No answer'} {ua?.isCorrect ? '(Correct)' : '(Incorrect)'}
-              </p>
-              {!ua?.isCorrect && (
-                <p className="text-sm text-gray-300">Correct answer: {correctOptText}</p>
-              )}
-              <p className="text-xs italic mt-1">Explanation: {q.explanation}</p>
-            </div>
-          );
-        })}
-      </div>
-      <Button onClick={resetQuiz} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 mt-6">
-        Take Another Quiz
-      </Button>
-    </div>
-  );
-}
+          <Button onClick={handleAnswerSubmit} disabled={!selectedOption} className="w
