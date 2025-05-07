@@ -1,3 +1,51 @@
 {
-  "pages": {}
+  "pages": {
+    "/_not-found/page": [
+      "static/chunks/webpack-10765c4a1b36fd61.js",
+      "static/chunks/e8c1ff47-5e9e141779787039.js",
+      "static/chunks/457-e52e6e694638ede4.js",
+      "static/chunks/main-app-ec722048964b68c5.js",
+      "static/chunks/app/_not-found/page-fb164a7ec30a5974.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-10765c4a1b36fd61.js",
+      "static/chunks/e8c1ff47-5e9e141779787039.js",
+      "static/chunks/457-e52e6e694638ede4.js",
+      "static/chunks/main-app-ec722048964b68c5.js",
+      "static/css/e71cfeee29547ce9.css",
+      "static/chunks/app/layout-72b4fe238e7d92b7.js"
+    ],
+    "/api/chat/route": [
+      "static/chunks/webpack-10765c4a1b36fd61.js",
+      "static/chunks/e8c1ff47-5e9e141779787039.js",
+      "static/chunks/457-e52e6e694638ede4.js",
+      "static/chunks/main-app-ec722048964b68c5.js",
+      "static/chunks/app/api/chat/route-9d9192f5fb9a9465.js"
+    ],
+    "/api/quiz/generate/route": [
+      "static/chunks/webpack-10765c4a1b36fd61.js",
+      "static/chunks/e8c1ff47-5e9e141779787039.js",
+      "static/chunks/457-e52e6e694638ede4.js",
+      "static/chunks/main-app-ec722048964b68c5.js",
+      "static/chunks/app/api/quiz/generate/route-dd0a32e92fe67627.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-10765c4a1b36fd61.js",
+      "static/chunks/e8c1ff47-5e9e141779787039.js",
+      "static/chunks/457-e52e6e694638ede4.js",
+      "static/chunks/main-app-ec722048964b68c5.js",
+      "static/chunks/0-65aa0fe810ae0128.js",
+      "static/chunks/964-ec6c8e6b2b0d7997.js",
+      "static/chunks/app/page-3814b73847f43ffb.js"
+    ],
+    "/quiz/page": [
+      "static/chunks/webpack-10765c4a1b36fd61.js",
+      "static/chunks/e8c1ff47-5e9e141779787039.js",
+      "static/chunks/457-e52e6e694638ede4.js",
+      "static/chunks/main-app-ec722048964b68c5.js",
+      "static/chunks/0-65aa0fe810ae0128.js",
+      "static/chunks/690-7a07adf282922ca3.js",
+      "static/chunks/app/quiz/page-c7335d3828b21449.js"
+    ]
+  }
 }

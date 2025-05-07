@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-
-
-import MistralClient from "@mistralai/mistralai"; // Corrected import
+import OpenAI from "openai";
 import protocols from "@/lib/protocols.json";
 
 interface Protocol {
@@ -20,24 +18,24 @@ const allProtocols: Protocol[] = Object.entries(protocols as ProtocolData).map((
   ...protocol,
 }));
 
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
-if (!MISTRAL_API_KEY) {
-  console.warn("MISTRAL_API_KEY environment variable is not set. Quiz generation will use mock questions if AI calls fail or are skipped.");
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+if (!OPENAI_API_KEY) {
+  console.warn("OPENAI_API_KEY environment variable is not set. Quiz generation will use mock questions if AI calls fail or are skipped.");
 }
 
-const mistral = MISTRAL_API_KEY ? new MistralClient(MISTRAL_API_KEY) : null;
+const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
-if (mistral) {
-    console.log("Mistral client initialized successfully with MistralClient.");
-} else if (MISTRAL_API_KEY) {
-    console.error("Mistral client FAILED to initialize with MistralClient despite API key being present.");
+if (openai) {
+    console.log("OpenAI client initialized successfully.");
+} else if (OPENAI_API_KEY) {
+    console.error("OpenAI client FAILED to initialize despite API key being present.");
 } else {
-    console.log("Mistral client not initialized as MISTRAL_API_KEY is not set.");
+    console.log("OpenAI client not initialized as OPENAI_API_KEY is not set.");
 }
 
 async function generateQuizQuestion(protocolContent: string, protocolTitle: string, existingQuestionTexts: string[]): Promise<any> {
-  if (!mistral) {
-    console.warn("Mistral client not available (likely no API key). Returning a mock question.");
+  if (!openai) {
+    console.warn("[QUIZ API - OpenAI] OpenAI client not available (likely no API key). Returning a mock question.");
     return {
         id: `mock-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         questionText: `This is a mock question about ${protocolTitle}. What is the primary intervention?`,
@@ -49,56 +47,64 @@ async function generateQuizQuestion(protocolContent: string, protocolTitle: stri
             { id: "4", text: "Mock Option D" },
         ],
         correctAnswerId: "1",
-        explanation: "This is a mock explanation because the AI service is not available or not configured.",
+        explanation: "This is a mock explanation because the AI service (OpenAI) is not available or not configured.",
     };
   }
 
   const questionTypes = ["multiple-choice", "scenario"];
   const selectedQuestionType = questionTypes[Math.floor(Math.random() * questionTypes.length)];
 
-  let prompt = `Based on the following EMS protocol titled "${protocolTitle}" and its content:\n\n${protocolContent}\n\n`;
+  let systemPrompt = "You are an assistant that generates EMS quiz questions based on provided protocols. Format your response as a valid JSON object.";
+  let userPrompt = `Based on the following EMS protocol titled "${protocolTitle}" and its content:\n\n${protocolContent}\n\n`;
   const existingQuestionsClause = existingQuestionTexts.length > 0 ? ` The question should be different from these existing questions: ${existingQuestionTexts.join("; ")}.` : "";
 
   if (selectedQuestionType === "multiple-choice") {
-    prompt += `Generate a unique multiple-choice question with 4 options (A, B, C, D) and identify the correct answer.${existingQuestionsClause} Provide the answer options as a numbered list (1. Option A, 2. Option B, etc.). Also provide a brief explanation for why the correct answer is correct. Format the output as a JSON object with keys: "questionText", "options" (an array of objects, each with "id" and "text"), "correctAnswerId" (e.g., "1", "2", "3", or "4"), and "explanation".`;
+    userPrompt += `Generate a unique multiple-choice question with 4 options and identify the correct answer.${existingQuestionsClause} Provide the answer options as a numbered list (1. Option A, 2. Option B, etc.). Also provide a brief explanation for why the correct answer is correct. Format the output as a JSON object with keys: "questionText", "options" (an array of objects, each with "id" and "text"), "correctAnswerId" (e.g., "1", "2", "3", or "4"), and "explanation". Ensure the entire response is a single JSON object.`;
   } else { // scenario
-    prompt += `Generate a unique, brief clinical scenario relevant to this protocol, followed by a question about the scenario.${existingQuestionsClause} Then, provide 4 multiple-choice options (A, B, C, D) for the question and identify the correct answer. Provide the answer options as a numbered list (1. Option A, 2. Option B, etc.). Also provide a brief explanation for why the correct answer is correct. Format the output as a JSON object with keys: "scenarioText", "questionText", "options" (an array of objects, each with "id" and "text"), "correctAnswerId" (e.g., "1", "2", "3", or "4"), and "explanation".`;
+    userPrompt += `Generate a unique, brief clinical scenario relevant to this protocol, followed by a question about the scenario.${existingQuestionsClause} Then, provide 4 multiple-choice options for the question and identify the correct answer. Provide the answer options as a numbered list (1. Option A, 2. Option B, etc.). Also provide a brief explanation for why the correct answer is correct. Format the output as a JSON object with keys: "scenarioText", "questionText", "options" (an array of objects, each with "id" and "text"), "correctAnswerId" (e.g., "1", "2", "3", or "4"), and "explanation". Ensure the entire response is a single JSON object.`;
   }
-  console.log(`[QUIZ API] Attempting to generate ${selectedQuestionType} question for protocol: "${protocolTitle}". Prompt length: ${prompt.length}`);
-  console.log(`[QUIZ API] Prompt: ${prompt}`); // Added detailed prompt logging
+  console.log(`[QUIZ API - OpenAI] Attempting to generate ${selectedQuestionType} question for protocol: "${protocolTitle}".`);
+  // console.log(`[QUIZ API - OpenAI] User Prompt: ${userPrompt}`); // Log prompt if needed for debugging, can be verbose
 
   try {
-    console.log("[QUIZ API] Calling mistral.chat()...");
-    const chatResponse = await mistral.chat({
-        model: "mistral-small-latest",
-        messages: [{ role: "user", content: prompt }],
+    console.log("[QUIZ API - OpenAI] Calling openai.chat.completions.create()...");
+    const chatCompletion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo-0125", // Or another suitable model like gpt-4o-mini if available and preferred
+        response_format: { type: "json_object" }, // Request JSON output
+        messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+        ],
     });
-    console.log("[QUIZ API] Mistral AI chat API call successful. Raw response received.");
-    console.log("[QUIZ API] Raw Mistral Response:", JSON.stringify(chatResponse, null, 2)); // Log raw response
+    console.log("[QUIZ API - OpenAI] OpenAI API call successful. Raw response received.");
+    // console.log("[QUIZ API - OpenAI] Raw OpenAI Response:", JSON.stringify(chatCompletion, null, 2)); // Log raw response if needed
 
-    if (!chatResponse || !chatResponse.choices || chatResponse.choices.length === 0 || !chatResponse.choices[0].message || !chatResponse.choices[0].message.content) {
-        console.error("[QUIZ API] Invalid or empty response structure from Mistral AI:", chatResponse);
-        throw new Error("Invalid or empty response structure from Mistral AI.");
+    if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0 || !chatCompletion.choices[0].message || !chatCompletion.choices[0].message.content) {
+        console.error("[QUIZ API - OpenAI] Invalid or empty response structure from OpenAI:", chatCompletion);
+        throw new Error("Invalid or empty response structure from OpenAI.");
     }
 
-    const responseContent = chatResponse.choices[0].message.content;
-    console.log("[QUIZ API] Response content from Mistral:", responseContent);
-    const jsonMatch = responseContent.match(/\{\s*[\s\S]*\}/);
-    if (!jsonMatch) {
-        console.error("[QUIZ API] AI response did not contain valid JSON:", responseContent);
-        throw new Error("AI response was not in the expected JSON format.");
+    const responseContent = chatCompletion.choices[0].message.content;
+    console.log("[QUIZ API - OpenAI] Response content from OpenAI (expecting JSON string):", responseContent);
+    
+    let parsedResponse;
+    try {
+        parsedResponse = JSON.parse(responseContent);
+    } catch (parseError: any) {
+        console.error("[QUIZ API - OpenAI] Failed to parse JSON from OpenAI response content:", responseContent, "Error:", parseError.message);
+        throw new Error("AI response was not valid JSON, despite requesting JSON output.");
     }
-    const parsedResponse = JSON.parse(jsonMatch[0]);
-    console.log("[QUIZ API] Successfully parsed JSON from AI response:", parsedResponse);
+
+    console.log("[QUIZ API - OpenAI] Successfully parsed JSON from AI response:", parsedResponse);
     
     if (parsedResponse.options && Array.isArray(parsedResponse.options)) {
         parsedResponse.options = parsedResponse.options.map((opt: any, index: number) => ({
-            id: opt.id ? String(opt.id) : String(index + 1),
+            id: opt.id ? String(opt.id) : String(index + 1), // Ensure ID is a string
             text: opt.text
         }));
     }
     if (parsedResponse.correctAnswerId) {
-        parsedResponse.correctAnswerId = String(parsedResponse.correctAnswerId);
+        parsedResponse.correctAnswerId = String(parsedResponse.correctAnswerId); // Ensure correctAnswerId is a string
     }
 
     return {
@@ -108,9 +114,9 @@ async function generateQuizQuestion(protocolContent: string, protocolTitle: stri
     };
 
   } catch (error: any) {
-    console.error("[QUIZ API] Error during Mistral AI call or response processing:", error.message);
-    console.error("[QUIZ API] Error stack:", error.stack);
-    console.warn("[QUIZ API] Falling back to a mock question due to AI error.");
+    console.error("[QUIZ API - OpenAI] Error during OpenAI API call or response processing:", error.message);
+    if (error.stack) console.error("[QUIZ API - OpenAI] Error stack:", error.stack);
+    console.warn("[QUIZ API - OpenAI] Falling back to a mock question due to AI error.");
     return {
         id: `mock-error-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         questionText: `Mock question for ${protocolTitle} (AI error). What is the primary intervention?`,
@@ -122,65 +128,66 @@ async function generateQuizQuestion(protocolContent: string, protocolTitle: stri
             { id: "4", text: "Mock Option D (AI Error)" },
         ],
         correctAnswerId: "1",
-        explanation: "This is a mock explanation because an error occurred during AI question generation.",
+        explanation: "This is a mock explanation because an error occurred during AI question generation (OpenAI).",
     };
   }
 }
 
 export async function POST(request: Request) {
-  console.log("[QUIZ API] Received POST request to /api/quiz/generate");
+  console.log("[QUIZ API - OpenAI] Received POST request to /api/quiz/generate");
   try {
     const { categories, length } = await request.json();
-    console.log("[QUIZ API] Request body:", { categories, length });
+    console.log("[QUIZ API - OpenAI] Request body:", { categories, length });
 
     if (!categories || !Array.isArray(categories) || categories.length === 0 || !length || typeof length !== "number") {
-      console.error("[QUIZ API] Invalid input to quiz generation:", { categories, length });
+      console.error("[QUIZ API - OpenAI] Invalid input to quiz generation:", { categories, length });
       return NextResponse.json({ error: "Invalid input: categories (array) and length (number) are required." }, { status: 400 });
     }
 
     const filteredProtocols = allProtocols.filter(p => 
       categories.some(cat => p.categories?.includes(cat))
     );
-    console.log(`[QUIZ API] Found ${filteredProtocols.length} protocols for categories: ${categories.join(", ")}`);
+    console.log(`[QUIZ API - OpenAI] Found ${filteredProtocols.length} protocols for categories: ${categories.join(", ")}`);
 
-    if (filteredProtocols.length === 0 && !(!mistral)) { 
-      console.warn("[QUIZ API] No protocols found for selected categories, but AI client is available. Cannot generate specific questions.");
+    if (filteredProtocols.length === 0 && !(!openai)) { 
+      console.warn("[QUIZ API - OpenAI] No protocols found for selected categories, but AI client is available. Cannot generate specific questions.");
       return NextResponse.json({ error: "No protocols found for the selected categories to generate AI questions." }, { status: 404 });
     }
 
     const generatedQuestions = [];
     const existingQuestionTexts: string[] = [];
-    const maxAttemptsPerQuestion = 3;
+    const maxAttemptsPerQuestion = 3; // To avoid infinite loops on duplicate questions
 
     for (let i = 0; i < length; i++) {
-      console.log(`[QUIZ API] Generating question ${i + 1} of ${length}`);
+      console.log(`[QUIZ API - OpenAI] Generating question ${i + 1} of ${length}`);
       let questionGenerated = false;
       for (let attempt = 0; attempt < maxAttemptsPerQuestion; attempt++) {
         const randomProtocol = filteredProtocols.length > 0 
             ? filteredProtocols[Math.floor(Math.random() * filteredProtocols.length)] 
-            : { id: "mock-protocol", title: "General EMS Knowledge", content: "Basic EMS procedures." };
+            : { id: "mock-protocol", title: "General EMS Knowledge", content: "Basic EMS procedures for mock generation." }; // Provide some content for mock if no protocols
         
         try {
           const newQuestion = await generateQuizQuestion(randomProtocol.content, randomProtocol.title, existingQuestionTexts);
           if (newQuestion && newQuestion.questionText) {
+            // Check for duplicates only if it's an AI generated question and not a mock one from error/no-key
             if (newQuestion.id.startsWith("ai-") && existingQuestionTexts.includes(newQuestion.questionText)) {
-                console.warn(`[QUIZ API] Duplicate AI question text detected: ${newQuestion.questionText}. Retrying attempt ${attempt + 1}...`);
+                console.warn(`[QUIZ API - OpenAI] Duplicate AI question text detected: ${newQuestion.questionText}. Retrying attempt ${attempt + 1}...`);
                 continue; 
             }
             generatedQuestions.push(newQuestion);
-            if (newQuestion.id.startsWith("ai-")) {
+            if (newQuestion.id.startsWith("ai-")) { // Add to existing texts only if AI generated
                 existingQuestionTexts.push(newQuestion.questionText);
             }
             questionGenerated = true;
-            console.log(`[QUIZ API] Successfully generated question ${i + 1}`);
+            console.log(`[QUIZ API - OpenAI] Successfully generated question ${i + 1}`);
             break; 
           }
         } catch (genError: any) { 
-          console.warn(`[QUIZ API] Outer catch: Attempt ${attempt + 1} to generate question ${i + 1} failed:`, genError.message);
+          console.warn(`[QUIZ API - OpenAI] Outer catch: Attempt ${attempt + 1} to generate question ${i + 1} failed:`, genError.message);
         }
       }
       if (!questionGenerated) {
-        console.warn(`[QUIZ API] Could not generate a unique question for slot ${i+1} after ${maxAttemptsPerQuestion} attempts. Adding fallback mock.`);
+        console.warn(`[QUIZ API - OpenAI] Could not generate a unique question for slot ${i+1} after ${maxAttemptsPerQuestion} attempts. Adding fallback mock.`);
         generatedQuestions.push({
             id: `fallback-mock-${Date.now()}-${i}`,
             questionText: `Fallback mock question ${i + 1}. Please review protocol knowledge. What is X?`,
@@ -191,12 +198,12 @@ export async function POST(request: Request) {
         });
       }
     }
-    console.log(`[QUIZ API] Finished generating ${generatedQuestions.length} questions.`);
+    console.log(`[QUIZ API - OpenAI] Finished generating ${generatedQuestions.length} questions.`);
     return NextResponse.json({ questions: generatedQuestions });
 
   } catch (error: any) {
-    console.error("[QUIZ API] Critical Error in POST /api/quiz/generate:", error.message);
-    console.error("[QUIZ API] Error stack:", error.stack);
+    console.error("[QUIZ API - OpenAI] Critical Error in POST /api/quiz/generate:", error.message);
+    if (error.stack) console.error("[QUIZ API - OpenAI] Error stack:", error.stack);
     return NextResponse.json({ error: error.message || "An unexpected server error occurred while generating the quiz." }, { status: 500 });
   }
 }
