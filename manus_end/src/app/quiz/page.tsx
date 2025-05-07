@@ -127,13 +127,13 @@ export default function QuizPage() {
                   onChange={() => toggleCategory(c.id)}
                   className="mr-2"
                 />
-                {c.name}
+                <span className="text-white">{c.name}</span>
               </Label>
             ))}
           </div>
         </div>
         <div>
-          <Label htmlFor="length" className="block text-sm font-medium">Number of questions:</Label>
+          <Label htmlFor="length" className="block text-sm font-medium text-white">Number of questions:</Label>
           <input
             type="number"
             id="length"
@@ -170,8 +170,7 @@ export default function QuizPage() {
         >
           {currentQuestion.options.map(option => (
             <Label
-              key={option.id}
-              htmlFor={option.id}
+              key={option.id}  htmlFor={option.id}
               className={`flex items-center p-3 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors ${
                 showFeedback && option.id === currentQuestion.correctAnswerId
                   ? 'border-green-500 bg-green-50 text-white'
@@ -196,9 +195,55 @@ export default function QuizPage() {
         </RadioGroup>
         {showFeedback && (
           <div className="p-4 mt-4 rounded-md bg-blue-600 border border-blue-400">
-            <p className="text-sm font-semibold">Explanation:</p>
-            <p className="text-sm whitespace-pre-line">{currentQuestion.explanation}</p>
+            <p className="text-sm font-semibold text-white">Explanation:</p>
+            <p className="text-sm whitespace-pre-line text-white">{currentQuestion.explanation}</p>
           </div>
         )}
         {!showFeedback ? (
-          <Button onClick={handleAnswerSubmit} disabled={!selectedOption} className="w
+          <Button onClick={handleAnswerSubmit} disabled={!selectedOption} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+            Submit
+          </Button>
+        ) : (
+          <Button onClick={handleNextQuestion} className="w-full bg-green-600 hover:bg-green-700 text-white">
+            {currentQuestionIndex + 1 < questions.length ? 'Next Question' : 'Finish Quiz'}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // COMPLETION SCREEN
+  return (
+    <div className="p-6 space-y-6 max-w-2xl mx-auto text-white">
+      <h1 className="text-3xl font-bold text-center">Quiz Completed!</h1>
+      <div className="p-6 bg-gray-700 rounded-lg shadow text-center">
+        <p className="text-xl text-white">Your Score:</p>
+        <p className="text-4xl font-bold text-green-200">{score} / {questions.length}</p>
+        <p className="text-2xl text-white">({((score / questions.length) * 100).toFixed(0)}%)</p>
+      </div>
+      <h3 className="text-xl font-semibold mt-6 mb-3 text-white">Review Your Answers:</h3>
+      <div className="space-y-4">
+        {questions.map(q => {
+          const ua = userAnswers.find(ua => ua.questionId === q.id);
+          const selectedOptText = q.options.find(opt => opt.id === ua?.selectedAnswerId)?.text;
+          const correctOptText = q.options.find(opt => opt.id === q.correctAnswerId)?.text;
+          return (
+            <div key={q.id} className="p-4 border rounded-md bg-gray-800 shadow-sm">
+              <p className="text-md font-semibold text-white">{q.questionText}</p>
+              <p className={`text-sm ${ua?.isCorrect ? 'text-green-200' : 'text-red-200'}`}>
+                Your answer: {selectedOptText || 'No answer'} {ua?.isCorrect ? '(Correct)' : '(Incorrect)'}
+              </p>
+              {!ua?.isCorrect && (
+                <p className="text-sm text-white">Correct answer: {correctOptText}</p>
+              )}
+              <p className="text-xs italic mt-1 text-white">Explanation: {q.explanation}</p>
+            </div>
+          );
+        })}
+      </div>
+      <Button onClick={resetQuiz} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 mt-6">
+        Take Another Quiz
+      </Button>
+    </div>
+  );
+}
