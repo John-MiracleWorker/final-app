@@ -18,6 +18,7 @@
   "dependencies": {
     "@ai-sdk/mistral": "^1.2.7",
     "@hookform/resolvers": "^3.10.0",
+    "@mistralai/mistralai": "^1.6.0",
     "@nanostores/react": "git+https://github.com/ai/react.git",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.4",

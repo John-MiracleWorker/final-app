@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from 'next/link'; // Import Link for navigation
 import { useChat } from "ai/react";
 import Fuse from 'fuse.js';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, MessageSquare, Loader2, AlertCircle, Filter, XCircle, CalculatorIcon } from "lucide-react";
+import { Search, MessageSquare, Loader2, AlertCircle, Filter, XCircle, CalculatorIcon, HelpCircleIcon } from "lucide-react"; // Added HelpCircleIcon for Quiz
 import protocolsData from "@/lib/protocols.json";
 import { MedicationCalculator } from "@/components/MedicationCalculator";
 
@@ -116,13 +117,17 @@ export default function Home() {
       <Card className="w-full max-w-4xl shadow-xl rounded-lg overflow-hidden">
         <CardHeader className="text-center bg-gray-800 text-white p-6">
             <div className="flex justify-between items-center">
-                <div></div> {/* Spacer */}
+                <Link href="/quiz" passHref legacyBehavior>
+                    <Button variant="outline" size="icon" title="Open Quiz Section" className="bg-gray-700 hover:bg-gray-600 border-gray-600 text-white">
+                        <HelpCircleIcon className="h-5 w-5" />
+                    </Button>
+                </Link>
                 <CardTitle className="text-3xl md:text-4xl font-bold">EMS Protocol Navigator</CardTitle>
                 <Button variant="outline" size="icon" onClick={() => setIsCalculatorOpen(true)} title="Open Medication Calculator" className="bg-gray-700 hover:bg-gray-600 border-gray-600 text-white">
                     <CalculatorIcon className="h-5 w-5" />
                 </Button>
             </div>
-            <CardDescription className="text-gray-300 mt-1">Search protocols or use AI chat for assistance</CardDescription>
+            <CardDescription className="text-gray-300 mt-1">Search protocols, use AI chat, or test your knowledge with a quiz</CardDescription>
         </CardHeader>
         <CardContent className="p-6 bg-white">
             <div className="w-full flex items-center space-x-2 mb-4">
